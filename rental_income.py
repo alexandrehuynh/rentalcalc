@@ -108,16 +108,24 @@ class UserManager:
 
     def add_property(self, user):
         print("\n--- Add a New Property ---")
-        address = input("Enter the property address (e.g., '123 Main St'): ").strip().title()
+        address = input("Enter the property address (e.g., '123 Main St City State Zip'): ").strip().title()
         if any(p.address == address for p in user.properties):
             print("Property with this address already exists.")
             return
         print("Enter the initial investment amount (e.g., 50000 for $50,000):")
+        raw_input = input("Initial Investment: $")
         try:
-            initial_investment = float(input("Initial Investment: $"))
+            initial_investment = float(raw_input)
         except ValueError:
-            print("Invalid amount. Please enter a number.")
+            print(f"Invalid amount '{raw_input}'. Please enter a number.")
             return
+
+        # Fetch rental estimate
+        rental_estimate = get_rental_estimate(address)
+        if rental_estimate:
+            print(f"Estimated Monthly Rental Price for {address}: ${rental_estimate['rent']}")
+        else:
+            print("Could not retrieve rental estimate for this address.")
 
         property = Property(address, initial_investment)
         self.add_financials(property)
@@ -201,6 +209,22 @@ class Menu:
                 break
             else:
                 print("Invalid choice. Please try again.")
+
+import requests
+
+def get_rental_estimate(address):
+    url = "https://realty-mole-property-api.p.rapidapi.com/rentalPrice"
+    querystring = {"address": address}
+    headers = {
+        'x-rapidapi-key': 'ab977be59emsh7e178cd91ed4f41p1bc275jsna464c4589422',
+        'x-rapidapi-host': "realty-mole-property-api.p.rapidapi.com"
+    }
+    response = requests.request("GET", url, headers=headers, params=querystring)
+    if response.status_code == 200:
+        return response.json()  
+    else:
+        print("Failed to retrieve data")
+        return None
 
 
 user_manager = UserManager()
