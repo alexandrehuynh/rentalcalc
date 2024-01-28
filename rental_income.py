@@ -17,8 +17,9 @@ class User:
             print(f"Address: {property.address}")
 
 class Property:
-    def __init__(self, address):
+    def __init__(self, address, initial_investment):
         self.address = address
+        self.initial_investment = initial_investment
         self.expenses = []
         self.incomes = []
         self.roi = 0
@@ -34,15 +35,22 @@ class Property:
 
     def remove_income(self, income_name):
         self.incomes = [income for income in self.incomes if income[0] != income_name]
+    
+    def calculate_total_income(self):
+        return sum(amount for _, amount in self.incomes)
 
-    def calculate_roi(self):
-        total_expense = sum(amount for _, amount in self.expenses)
-        total_income = sum(amount for _, amount in self.incomes)
-        if total_expense > 0:
-            self.roi = (total_income - total_expense) / total_expense * 100
+    def calculate_total_expenses(self):
+        return sum(amount for _, amount in self.expenses)
+
+    def calculate_cash_flow(self):
+        return self.calculate_total_income() - self.calculate_total_expenses()
+
+    def calculate_cash_on_cash_roi(self):
+        cash_flow_annual = self.calculate_cash_flow() * 12
+        if self.initial_investment > 0:
+            return (cash_flow_annual / self.initial_investment) * 100
         else:
-            self.roi = 0
-        return self.roi
+            return 0
 
     def list_incomes(self):
         return self.incomes
@@ -77,12 +85,12 @@ class UserManager:
 
     def user_menu(self, user):
         while True:
-            print("\nUser Menu")
+            print("\n--- User Menu ---")
             print("1. Add Property")
             print("2. List Properties")
             print("3. Calculate ROI for a Property")
             print("4. Return to Main Menu")
-
+            print("5. Exit Program")
             choice = input("Enter your choice: ")
 
             if choice == "1":
@@ -93,32 +101,83 @@ class UserManager:
                 self.calculate_roi(user)
             elif choice == "4":
                 break
+            elif choice == "5":
+                exit()
             else:
                 print("Invalid choice. Please try again.")
 
     def add_property(self, user):
-        address = input("Enter the property address: ").capitalize()
-        # Check for unique address
+        print("\n--- Add a New Property ---")
+        address = input("Enter the property address (e.g., '123 Main St'): ").strip().title()
         if any(p.address == address for p in user.properties):
             print("Property with this address already exists.")
             return
-        property = Property(address)
+        print("Enter the initial investment amount (e.g., 50000 for $50,000):")
+        try:
+            initial_investment = float(input("Initial Investment: $"))
+        except ValueError:
+            print("Invalid amount. Please enter a number.")
+            return
+
+        property = Property(address, initial_investment)
+        self.add_financials(property)
         user.add_property(property)
         print(f"Property at {address} added successfully.")
+    
+    def add_financials(self, property):
+        print("\n--- Add Income Sources ---")
+        print("Enter monthly income sources and amounts (e.g., 'Rent 2400'). Type 'done' to finish.")
+        while True:
+            income_input = input("Income Source (Name Amount): ")
+            if income_input.lower() == 'done':
+                break
+            try:
+                income_name, income_amount = income_input.split(maxsplit=1)
+                income_amount = float(income_amount)
+                property.add_income(income_name.strip().capitalize(), income_amount)
+            except ValueError:
+                print("Invalid format. Please enter as 'Name Amount'.")
+
+        print("\n--- Add Expense Items ---")
+        print("Enter monthly expense items and amounts (e.g., 'Mortgage 1100'). Type 'done' to finish.")
+        while True:
+            expense_input = input("Expense Item (Name Amount): ")
+            if expense_input.lower() == 'done':
+                break
+            try:
+                expense_name, expense_amount = expense_input.split(maxsplit=1)
+                expense_amount = float(expense_amount)
+                property.add_expense(expense_name.strip().capitalize(), expense_amount)
+            except ValueError:
+                print("Invalid format. Please enter as 'Name Amount'.")
 
     def calculate_roi(self, user):
-        user.list_properties()
         if not user.properties:
+            print("No properties available. Please add a property first.")
             return
-        address = input("Enter the address of the property to calculate ROI: ").capitalize()
-        property = next((p for p in user.properties if p.address == address), None)
-        if property is None:
-            print("Property not found.")
+        for i, property in enumerate(user.properties):
+            print(f"{i + 1}. {property.address}")
+        try:
+            property_index = int(input("Select a property number to calculate ROI: ")) - 1
+            if 0 <= property_index < len(user.properties):
+                property = user.properties[property_index]
+            else:
+                print("Invalid property selection. Please try again.")
+                return
+        except ValueError:
+            print("Invalid input. Please enter a number.")
             return
-        total_expense = sum([float(input(f"Enter amount for {expense[0]}: ")) for expense in property.list_expenses()])
-        total_income = sum([float(input(f"Enter amount for {income[0]}: ")) for income in property.list_incomes()])
-        roi = property.calculate_roi()
-        print(f"The ROI for the property at {property.address} is {roi:.2f}%.")
+
+        total_income = property.calculate_total_income()
+        total_expenses = property.calculate_total_expenses()
+        cash_flow = property.calculate_cash_flow()
+        cash_on_cash_roi = property.calculate_cash_on_cash_roi()
+
+        print(f"\nFinancial Overview for {property.address}:")
+        print(f"Total Income: {total_income}")
+        print(f"Total Expenses: {total_expenses}")
+        print(f"Cash Flow: {cash_flow}")
+        print(f"Cash on Cash ROI: {cash_on_cash_roi:.2f}%")
 
 class Menu:
     def __init__(self, user_manager):
@@ -142,6 +201,7 @@ class Menu:
                 break
             else:
                 print("Invalid choice. Please try again.")
+
 
 user_manager = UserManager()
 menu = Menu(user_manager)
