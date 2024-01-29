@@ -1,6 +1,27 @@
 import requests
 import sys
 
+def input_float(message, error_message):
+    while True:
+        try:
+            return float(input(message))
+        except ValueError:
+            print(error_message)
+
+def get_rental_estimate(address):
+    url = "https://realty-mole-property-api.p.rapidapi.com/rentalPrice"
+    querystring = {"address": address}
+    headers = {
+        'x-rapidapi-key': 'ab977be59emsh7e178cd91ed4f41p1bc275jsna464c4589422',
+        'x-rapidapi-host': "realty-mole-property-api.p.rapidapi.com"
+    }
+    response = requests.request("GET", url, headers=headers, params=querystring)
+    if response.status_code == 200:
+        return response.json()  
+    else:
+        print("Failed to retrieve data")
+        return None
+    
 class User:
     def __init__(self, name):
         self.name = name
@@ -50,8 +71,14 @@ class Property:
     def calculate_cash_flow(self):
         return self.calculate_total_income() - self.calculate_total_expenses()
 
-    def set_property_value(self, value):
-        self.property_value = value
+    def set_property_tax_rate(self):
+        try:
+            tax_rate = input_float("Enter the property tax rate (as a percentage, e.g., 1.2 for 1.2%): ", 
+                                   "Invalid rate. Please enter a number.")
+            self.tax_rate = tax_rate / 100 
+            print(f"Property tax rate set to {self.tax_rate * 100}%.")
+        except ValueError:
+            print("Invalid input. Please enter a valid number.")
 
     def set_tax_rate(self, rate):
         self.tax_rate = rate
@@ -134,26 +161,23 @@ class UserManager:
         if any(p.address == address for p in user.properties):
             print("Property with this address already exists.")
             return
-        print("Enter the initial investment amount (e.g., 50000 for $50,000):")
-        raw_input = input("Initial Investment: $")
-        try:
-            initial_investment = float(raw_input)
-        except ValueError:
-            print(f"Invalid amount '{raw_input}'. Please enter a number.")
-            return
-
-        # Fetch rental estimate
+        
+        initial_investment = input_float("Enter the initial investment amount (e.g., 50000 for $50,000): ", 
+                                         "Invalid amount. Please enter a number.")
+        property = Property(address, initial_investment)
+        property.set_property_tax_rate() 
+        
         rental_estimate = get_rental_estimate(address)
         if rental_estimate:
             print(f"Estimated Monthly Rental Price for {address}: ${rental_estimate['rent']}")
         else:
             print("Could not retrieve rental estimate for this address.")
-
+        
         property = Property(address, initial_investment)
         self.add_financials(property)
         user.add_property(property)
         print(f"Property at {address} added successfully.")
-    
+        
     def add_financials(self, property):
         print("\n--- Add Income Sources ---")
         print("Enter monthly income sources and amounts (e.g., 'Rent 2400'). Type 'done' to finish.")
@@ -231,20 +255,6 @@ class Menu:
                 break
             else:
                 print("Invalid choice. Please try again.")
-
-def get_rental_estimate(address):
-    url = "https://realty-mole-property-api.p.rapidapi.com/rentalPrice"
-    querystring = {"address": address}
-    headers = {
-        'x-rapidapi-key': 'ab977be59emsh7e178cd91ed4f41p1bc275jsna464c4589422',
-        'x-rapidapi-host': "realty-mole-property-api.p.rapidapi.com"
-    }
-    response = requests.request("GET", url, headers=headers, params=querystring)
-    if response.status_code == 200:
-        return response.json()  
-    else:
-        print("Failed to retrieve data")
-        return None
 
 
 user_manager = UserManager()
