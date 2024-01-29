@@ -1,3 +1,6 @@
+import requests
+import sys
+
 class User:
     def __init__(self, name):
         self.name = name
@@ -23,7 +26,9 @@ class Property:
         self.expenses = []
         self.incomes = []
         self.roi = 0
-
+        self.property_value = 0
+        self.tax_rate = 0 
+        
     def add_expense(self, expense_name, expense_amount):
         self.expenses.append((expense_name, expense_amount))
 
@@ -40,17 +45,34 @@ class Property:
         return sum(amount for _, amount in self.incomes)
 
     def calculate_total_expenses(self):
-        return sum(amount for _, amount in self.expenses)
+        return sum(amount for _, amount in self.expenses) + self.calculate_property_tax()
 
     def calculate_cash_flow(self):
         return self.calculate_total_income() - self.calculate_total_expenses()
 
-    def calculate_cash_on_cash_roi(self):
-        cash_flow_annual = self.calculate_cash_flow() * 12
-        if self.initial_investment > 0:
-            return (cash_flow_annual / self.initial_investment) * 100
+    def set_property_value(self, value):
+        self.property_value = value
+
+    def set_tax_rate(self, rate):
+        self.tax_rate = rate
+
+    def calculate_property_tax(self):
+        return self.property_value * self.tax_rate / 100
+
+    def calculate_roi(self):
+        total_income = self.calculate_total_income()
+        total_expense = self.calculate_total_expenses()
+        if total_expense > 0:
+            return (total_income - total_expense) / total_expense * 100
         else:
             return 0
+        
+    def calculate_cash_on_cash_roi(self):
+        annual_cash_flow = self.calculate_cash_flow() * 12
+        if self.initial_investment > 0:
+            return (annual_cash_flow / self.initial_investment) * 100
+        return 0
+
 
     def list_incomes(self):
         return self.incomes
@@ -102,7 +124,7 @@ class UserManager:
             elif choice == "4":
                 break
             elif choice == "5":
-                exit()
+                sys.exit(0)
             else:
                 print("Invalid choice. Please try again.")
 
@@ -209,8 +231,6 @@ class Menu:
                 break
             else:
                 print("Invalid choice. Please try again.")
-
-import requests
 
 def get_rental_estimate(address):
     url = "https://realty-mole-property-api.p.rapidapi.com/rentalPrice"
